@@ -14,6 +14,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	//"log"
 	"net"
 	"sync"
 	"time"
@@ -37,14 +38,29 @@ type YggdrasilTransport struct {
 }
 
 type yggdrasilConnection struct {
-	context.Context
-	context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 	quic.Connection
 }
 
 type yggdrasilStream struct {
 	*yggdrasilConnection
 	quic.Stream
+}
+
+// IsAlive returns true when the QUIC session is still healthy.
+func (s *yggdrasilStream) IsAlive() bool {
+	if s.ctx.Err() != nil {
+		return false
+	}
+	st := s.Connection.ConnectionState()
+	return st.TLS.HandshakeComplete
+}
+
+// CloseConnection closes the underlying QUIC session (and all its streams).
+func (s *yggdrasilStream) CloseConnection(code quic.ApplicationErrorCode, msg string) error {
+	s.cancel()
+	return s.Connection.CloseWithError(code, msg)
 }
 
 type yggdrasilDial struct {
@@ -55,10 +71,17 @@ type yggdrasilDial struct {
 func New(ygg *core.Core, cert tls.Certificate, qc *quic.Config) (*YggdrasilTransport, error) {
 	if qc == nil {
 		qc = &quic.Config{
-			HandshakeIdleTimeout:    time.Second * 5,
-			MaxIdleTimeout:          time.Second * 60,
+			HandshakeIdleTimeout:    time.Second * 8,
+			MaxIdleTimeout:          time.Second * 180,
 			InitialPacketSize:       uint16(ygg.MTU()),
 			DisablePathMTUDiscovery: true,
+			// --- disable 0-RTT & fast open ---
+			Allow0RTT: false,
+			// --- conservative congestion ---
+			MaxStreamReceiveWindow:     1 << 20, // 1 MiB
+			MaxConnectionReceiveWindow: 2 << 20, // 2 MiB
+			// --- no token store (no resumption) ---
+			TokenStore: nil,
 		}
 	}
 	tr := &YggdrasilTransport{
@@ -96,11 +119,12 @@ func (t *YggdrasilTransport) connectionAcceptLoop(ctx context.Context) {
 		// will want to shut down the existing one and replace it with
 		// this one.
 		host := qc.RemoteAddr().String()
+		//log.Printf("Accepted connection from: %s", host)
 		ctx, cancel := context.WithCancel(t.ctx)
 		yc := &yggdrasilConnection{ctx, cancel, qc}
 		if eqc, ok := t.connections.Swap(host, yc); ok {
 			if eqc, ok := eqc.(*yggdrasilConnection); ok {
-				eqc.CancelFunc()
+				eqc.cancel()
 			}
 		}
 
@@ -121,14 +145,14 @@ func (t *YggdrasilTransport) streamAcceptLoop(yc *yggdrasilConnection) {
 	defer t.connections.Delete(host)
 
 	for {
-		qs, err := yc.AcceptStream(yc.Context)
+		qs, err := yc.AcceptStream(yc.ctx)
 		if err != nil {
 			return
 		}
 		select {
 		case t.incoming <- &yggdrasilStream{yc, qs}:
 			// An Accept call is waiting.
-		case <-yc.Context.Done():
+		case <-yc.ctx.Done():
 			// We've timed out waiting for a call to Accept
 			// to handle the connection.
 			return
@@ -212,7 +236,12 @@ retry:
 }
 
 func (t *YggdrasilTransport) Accept() (net.Conn, error) {
-	return <-t.incoming, nil
+	select {
+	case conn := <-t.incoming:
+		return conn, nil
+	case <-t.ctx.Done():
+		return nil, t.ctx.Err()
+	}
 }
 
 func (t *YggdrasilTransport) Addr() net.Addr {
@@ -223,5 +252,6 @@ func (t *YggdrasilTransport) Close() error {
 	if err := t.listener.Close(); err != nil {
 		return err
 	}
+	t.cancel()
 	return t.yggdrasil.Close()
 }
