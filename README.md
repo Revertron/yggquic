@@ -5,3 +5,8 @@ Yggdrasil Network. This is in place of using a TUN adapter or IPv6
 and allows Yggdrasil-native applications to be built easily.
 
 See `yggquic_test.go` for example usage.
+
+To build a library for [Mimir](https://mimir-app.net) use:
+```shell
+gomobile bind -tags "noprofiler" -ldflags="-s -w" -target=android -androidapi 23 -javapkg=com.revertron.mimir -o yggquic.aar ./mobile
+```
