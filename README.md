@@ -8,5 +8,9 @@ See `yggquic_test.go` for example usage.
 
 To build a library for [Mimir](https://mimir-app.net) use:
 ```shell
+# One time:
+go install golang.org/x/mobile/cmd/gomobile@latest
+gomobile init
+# And then every rebuild:
 gomobile bind -tags "noprofiler" -ldflags="-s -w" -target=android -androidapi 23 -javapkg=com.revertron.mimir -o yggquic.aar ./mobile
 ```
