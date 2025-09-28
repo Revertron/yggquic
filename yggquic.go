@@ -68,11 +68,11 @@ type yggdrasilDial struct {
 	context.CancelFunc
 }
 
-func New(ygg *core.Core, cert tls.Certificate, qc *quic.Config) (*YggdrasilTransport, error) {
+func New(ygg *core.Core, cert tls.Certificate, qc *quic.Config, timeout int64) (*YggdrasilTransport, error) {
 	if qc == nil {
 		qc = &quic.Config{
 			HandshakeIdleTimeout:    time.Second * 8,
-			MaxIdleTimeout:          time.Second * 180,
+			MaxIdleTimeout:          time.Second * time.Duration(timeout),
 			InitialPacketSize:       uint16(ygg.MTU()),
 			DisablePathMTUDiscovery: true,
 			// --- disable 0-RTT & fast open ---
@@ -175,7 +175,7 @@ func (t *YggdrasilTransport) DialContext(ctx context.Context, network, host stri
 		<-dial.(*yggdrasilDial).Done()
 	}
 
-	// We might want to retrying once if part of the dial process fails,
+	// We might want to retry once if part of the dial process fails,
 	// but keep a track of whether we're already retrying.
 	var retrying bool
 retry:

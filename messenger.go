@@ -70,7 +70,7 @@ func NewMessenger(peerAddr string) (*Messenger, error) {
 		return nil, err
 	}
 
-	tr, err := New(node, *cfg.Certificate, nil)
+	tr, err := New(node, *cfg.Certificate, nil, 120)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func NewMessenger(peerAddr string) (*Messenger, error) {
 }
 
 // NewWithNode lets callers supply their own *core.Core.
-func NewWithNode(node *core.Core, cert *tls.Certificate, peerAddrs []string) (*Messenger, error) {
+func NewWithNode(node *core.Core, cert *tls.Certificate, peerAddrs []string, timeout int64) (*Messenger, error) {
 	for _, a := range peerAddrs {
 		if a == "" {
 			continue
@@ -97,12 +97,16 @@ func NewWithNode(node *core.Core, cert *tls.Certificate, peerAddrs []string) (*M
 			return nil, err
 		}
 	}
-	tr, err := New(node, *cert, nil)
+	tr, err := New(node, *cert, nil, timeout)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Messenger{transport: tr, cfg: &config.NodeConfig{Certificate: cert}, ctx: ctx, cancel: cancel}, nil
+}
+
+func (m *Messenger) GetTransport() *YggdrasilTransport {
+	return m.transport
 }
 
 func (m *Messenger) PublicKey() []byte {
