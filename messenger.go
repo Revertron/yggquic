@@ -14,11 +14,11 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net"
 	"net/url"
 	"time"
 
-	"github.com/quic-go/quic-go"
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/config"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"

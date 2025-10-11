@@ -12,7 +12,7 @@ To build a library for [Mimir](https://mimir-app.net) use:
 go install golang.org/x/mobile/cmd/gomobile@latest
 gomobile init
 # And then every rebuild:
-gomobile bind -tags "noprofiler" -ldflags="-s -w" -target=android -androidapi 23 -javapkg=com.revertron.mimir -o yggquic.aar ./mobile
+gomobile bind -target=android -androidapi 23 -javapkg=com.revertron.mimir -o yggquic.aar ./mobile
 # If gomobile complains to build, do these two:
 go install golang.org/x/mobile/cmd/gobind@latest
 go get golang.org/x/mobile/bind@latest

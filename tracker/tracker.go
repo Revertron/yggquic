@@ -25,7 +25,7 @@ import (
 
 	"crypto/tls"
 
-	"github.com/yggdrasil-network/yggquic"
+	"github.com/Revertron/yggquic"
 	//"github.com/yggdrasil-network/yggdrasil-go/src/config"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 )

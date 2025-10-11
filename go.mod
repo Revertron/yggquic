@@ -1,8 +1,6 @@
-module github.com/yggdrasil-network/yggquic
+module github.com/Revertron/yggquic
 
-go 1.24.0
-
-toolchain go1.24.5
+go 1.25.1
 
 require (
 	github.com/Arceliar/ironwood v0.0.0-20241213013129-743fe2fccbd3

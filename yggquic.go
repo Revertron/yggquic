@@ -14,7 +14,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	//"log"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -73,6 +73,7 @@ func New(ygg *core.Core, cert tls.Certificate, qc *quic.Config, timeout int64) (
 		qc = &quic.Config{
 			HandshakeIdleTimeout:    time.Second * 8,
 			MaxIdleTimeout:          time.Second * time.Duration(timeout),
+			KeepAlivePeriod:         time.Second * 60,
 			InitialPacketSize:       uint16(ygg.MTU()),
 			DisablePathMTUDiscovery: true,
 			// --- disable 0-RTT & fast open ---
@@ -147,6 +148,7 @@ func (t *YggdrasilTransport) streamAcceptLoop(yc *yggdrasilConnection) {
 	for {
 		qs, err := yc.AcceptStream(yc.ctx)
 		if err != nil {
+			log.Printf("streamAcceptLoop exiting for %s: %v", host, err)
 			return
 		}
 		select {
@@ -155,6 +157,7 @@ func (t *YggdrasilTransport) streamAcceptLoop(yc *yggdrasilConnection) {
 		case <-yc.ctx.Done():
 			// We've timed out waiting for a call to Accept
 			// to handle the connection.
+			log.Printf("Closed connection to: %s", host)
 			return
 		}
 	}

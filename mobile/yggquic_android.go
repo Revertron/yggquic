@@ -3,7 +3,7 @@ package yggmobile
 import (
 	"time"
 
-	"github.com/yggdrasil-network/yggquic"
+	"github.com/Revertron/yggquic"
 )
 
 type Messenger struct{ m *yggquic.Messenger }
