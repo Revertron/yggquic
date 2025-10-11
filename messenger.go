@@ -44,12 +44,17 @@ func (c *Conn) IsAlive() bool {
 }
 
 func (c *Conn) Close() {
-	if ys, ok := c.Stream.(*yggdrasilStream); ok {
+	err := c.Stream.Close()
+	if err != nil {
+		log.Printf("Error closing connection: %v", err)
+		return
+	}
+	/*if ys, ok := c.Stream.(*yggdrasilStream); ok {
 		err := ys.CloseConnection(quic.ApplicationErrorCode(0), "normal close")
 		if err != nil {
 			return
 		}
-	}
+	}*/
 }
 
 // NewMessenger creates a node and connects to the given bootstrap peer.
@@ -70,7 +75,7 @@ func NewMessenger(peerAddr string) (*Messenger, error) {
 		return nil, err
 	}
 
-	tr, err := New(node, *cfg.Certificate, nil, 120)
+	tr, err := New(node, *cfg.Certificate, nil, 300)
 	if err != nil {
 		return nil, err
 	}

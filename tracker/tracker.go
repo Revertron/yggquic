@@ -179,7 +179,7 @@ func main() {
 		}
 		// distinguish client vs sync connection by first byte
 		go func(c *yggquic.Conn) {
-			defer c.Close()
+			//defer c.Close()
 			// read 1-byte discriminator
 			var disc [1]byte
 			if _, err := io.ReadFull(c.Stream, disc[:]); err != nil {
@@ -199,6 +199,7 @@ func main() {
 				markConnected(callerPub)
 				defer markDisconnected(callerPub)
 				runSyncConnection(ctx, c.Stream, callerPub)
+				c.Close()
 			case protoClient:
 				handle(ctx, c)
 			default:
@@ -239,7 +240,7 @@ func createSelfSignedCert(pub ed25519.PublicKey, priv ed25519.PrivateKey) ([]byt
 }
 
 func handle(ctx context.Context, conn *yggquic.Conn) {
-	defer conn.Stream.Close()
+	defer conn.Close()
 	//log.Printf("Handling request…")
 
 	var hdr [38]byte // version(1) + nonce(4) + cmd(1) + userPub(32)
