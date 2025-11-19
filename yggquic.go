@@ -40,12 +40,12 @@ type YggdrasilTransport struct {
 type yggdrasilConnection struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	quic.Connection
+	*quic.Conn
 }
 
 type yggdrasilStream struct {
 	*yggdrasilConnection
-	quic.Stream
+	*quic.Stream
 }
 
 // IsAlive returns true when the QUIC session is still healthy.
@@ -53,14 +53,14 @@ func (s *yggdrasilStream) IsAlive() bool {
 	if s.ctx.Err() != nil {
 		return false
 	}
-	st := s.Connection.ConnectionState()
+	st := s.Conn.ConnectionState()
 	return st.TLS.HandshakeComplete
 }
 
 // CloseConnection closes the underlying QUIC session (and all its streams).
 func (s *yggdrasilStream) CloseConnection(code quic.ApplicationErrorCode, msg string) error {
 	s.cancel()
-	return s.Connection.CloseWithError(code, msg)
+	return s.Conn.CloseWithError(code, msg)
 }
 
 type yggdrasilDial struct {
@@ -148,7 +148,6 @@ func (t *YggdrasilTransport) streamAcceptLoop(yc *yggdrasilConnection) {
 	for {
 		qs, err := yc.AcceptStream(yc.ctx)
 		if err != nil {
-			log.Printf("streamAcceptLoop exiting for %s: %v", host, err)
 			return
 		}
 		select {
@@ -203,7 +202,7 @@ retry:
 			copy(addr, k)
 
 			// Attempt to open a QUIC session.
-			var qc quic.Connection
+			var qc *quic.Conn
 			if qc, err = t.transport.Dial(dialctx, addr, t.tlsConfig, t.quicConfig); err != nil {
 				return nil, err
 			}
@@ -224,6 +223,10 @@ retry:
 		// dialed a new one, so open a stream on it.
 		qs, err := yc.OpenStreamSync(ctx)
 		if err != nil {
+			// Remove the stale connection from the map so retry can create a new one
+			t.connections.Delete(host)
+			yc.cancel() // Cancel the connection's context
+
 			// We failed to open a stream, so if this isn't a
 			// retry, then let's try opening a new connection.
 			if !retrying {
