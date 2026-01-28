@@ -211,3 +211,14 @@ func (m *Messenger) GetTreeJSON() string {
 	}
 	return "[]"
 }
+
+// SetPeerChangeCallback sets a callback function that will be called whenever
+// the peer connection state changes (peers connect, disconnect, added, or removed).
+// The callback receives:
+//   - connected: number of currently connected peers
+//   - total: total number of configured peers
+func (m *Messenger) SetPeerChangeCallback(callback core.PeerChangeCallback) {
+	if corePtr, ok := m.transport.yggdrasil.(*core.Core); ok {
+		corePtr.SetPeerChangeCallback(callback)
+	}
+}
