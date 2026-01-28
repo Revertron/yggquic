@@ -68,3 +68,22 @@ func (c *Connection) WriteWithTimeout(buf []byte, timeoutMs int) (int, error) {
 	return c.c.Stream.Write(buf)
 }
 func (c *Connection) Close() { c.c.Close() }
+
+// PeerChangeCallback is called when the peer connection state changes.
+// gomobile requires interface types instead of function types.
+type PeerChangeCallback interface {
+	OnPeerCountChanged(connected int64, total int64)
+}
+
+// SetPeerChangeCallback sets a callback that will be notified when peer connections change.
+// The callback receives the number of connected peers and total configured peers.
+func (m *Messenger) SetPeerChangeCallback(callback PeerChangeCallback) {
+	if callback == nil {
+		m.m.SetPeerChangeCallback(nil)
+		return
+	}
+	// Wrap the interface callback to match core.PeerChangeCallback signature
+	m.m.SetPeerChangeCallback(func(connected int, total int) {
+		callback.OnPeerCountChanged(int64(connected), int64(total))
+	})
+}
